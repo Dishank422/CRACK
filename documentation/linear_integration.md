@@ -1,4 +1,4 @@
-# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/CRACK/main/press-kit/logo/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>Linear Integration
+# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/History-Helper-Privacy-Policy/main/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>Linear Integration
 
 CRACK can automatically **detect the [Linear](https://linear.app/) issue associated with your branch** (e.g., `ENG-123`) 
 and use it as extra context during code review and question answering.

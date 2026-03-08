@@ -1,4 +1,4 @@
-# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/CRACK/main/press-kit/logo/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>Jira Integration
+# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/History-Helper-Privacy-Policy/main/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>Jira Integration
 
 CRACK can automatically **detect a Jira issue key from your branch name**, fetch the Jira issue details, and inject that context into:
 

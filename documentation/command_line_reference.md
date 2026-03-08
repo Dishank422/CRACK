@@ -1,4 +1,4 @@
-# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/CRACK/main/press-kit/logo/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>CRACK CLI Reference
+# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/History-Helper-Privacy-Policy/main/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>CRACK CLI Reference
 
 CRACK is an open-source AI code reviewer that works with any language model provider.
 It detects issues in GitHub pull requests or local codebase changes—instantly, reliably, and without vendor lock-in.
