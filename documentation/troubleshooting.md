@@ -1,4 +1,4 @@
-# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/CRACK/main/press-kit/logo/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>Troubleshooting
+# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/History-Helper-Privacy-Policy/main/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>Troubleshooting
 
 This guide covers common issues you may encounter while using CRACK and provides solutions to resolve them. If your issue is not listed here, please refer to the [Getting Help](#getting-help) section below.
 

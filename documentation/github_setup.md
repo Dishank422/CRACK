@@ -1,4 +1,4 @@
-# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/CRACK/main/press-kit/logo/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>GitHub Setup Guide: Integrating CRACK with Your Repository
+# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/History-Helper-Privacy-Policy/main/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>GitHub Setup Guide: Integrating CRACK with Your Repository
 
 Automate code review for all Pull Requests using AI.  
 This step-by-step guide shows how to connect [CRACK](https://pypi.org/project/CRACK.bot/) to a GitHub repository for **continuous, automated PR reviews**.

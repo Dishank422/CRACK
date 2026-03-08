@@ -1,4 +1,4 @@
-# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/CRACK/main/press-kit/logo/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>Documentation generation with CRACK (using `CRACK ask`)
+# <a href="https://github.com/Dishank422/CRACK"><img src="https://raw.githubusercontent.com/Dishank422/History-Helper-Privacy-Policy/main/CRACK-bot-1_64top.png" align="left" width=64 height=50 title="CRACK: AI Code Reviewer"></a>Documentation generation with CRACK (using `CRACK ask`)
 
 CRACK isn't only for AI code reviews—it can also generate **project documentation** directly from your repository context.  
 The workhorse for that is the `CRACK ask` command, which can read your code changes (or the whole repo)
