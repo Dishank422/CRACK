@@ -110,7 +110,10 @@ class FilesystemToolProvider(ToolProvider):
                 )
             except FileNotFoundError:
                 # Fallback to grep if rg is not installed
-                cmd = ["grep", "-rn", "--include", file_glob or "*", "--", pattern, repo_path]
+                cmd = ["grep", "-rn", "-m", str(max_results)]
+                if file_glob:
+                    cmd.extend(["--include", file_glob])
+                cmd.extend(["--", pattern, repo_path])
                 try:
                     result = subprocess.run(
                         cmd, capture_output=True, text=True, timeout=30
