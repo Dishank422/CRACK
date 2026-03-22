@@ -5,8 +5,9 @@ Orchestrates the review loop: sends the PR diff as initial context, lets the LLM
 call tools to explore the codebase, and collects a structured ReviewResult.
 """
 
+import functools
 import logging
-from typing import Any
+from typing import Any, Callable
 
 from pydantic_ai import Agent, UsageLimits
 from pydantic_ai.settings import ModelSettings
@@ -38,21 +39,26 @@ Do NOT comment on:
 
 ## Your workflow
 
-1. First, examine the PR diff and changed files to understand what the PR does.
-2. Use your tools to explore the codebase for context:
-   - Follow imports to understand how changed code is used
-   - Search for callers of modified functions
-   - Check if tests exist for changed code
-   - Look up referenced issues or PRs (e.g., #42, fixes #123)
-3. Only after you have sufficient context, produce your review.
+YOU MUST USE TOOLS TO INVESTIGATE BEFORE PRODUCING YOUR REVIEW. Do not skip this step.
+
+1. First, read the diff and changed file list provided below to understand what the PR does.
+2. Then, BEFORE writing any review, use your tools to gather context. You should make
+   at least a few tool calls. Good investigations include:
+   - read_file to see the full file around changed code (the diff alone lacks context)
+   - search_repo to find callers/usages of modified functions or classes
+   - search_repo to check if tests exist for the changed code
+   - read_file to follow imports and understand dependencies
+   - get_issue_or_pr if you see issue/PR references like #42 or "fixes #123"
+   - list_directory to understand project structure if needed
+3. Only AFTER investigating with tools, produce your final review.
 
 ## Tool usage guidelines
 
-- Be targeted with your tool calls. Don't explore aimlessly.
-- Use search_repo to find usages, callers, or related code.
-- Use read_file to understand specific files referenced in the diff.
-- Use get_issue_or_pr to understand context behind issue references.
-- You have a limited tool call budget, so prioritize the most valuable investigations.
+- Be targeted: investigate things that could reveal bugs or missing changes.
+- Prioritize: check callers of changed functions, look for missing test coverage,
+  verify that API contracts match between caller and callee.
+- You have a tool call budget, so focus on the highest-value investigations.
+- DO NOT produce your review output without having made at least one tool call first.
 
 ## Review output
 
@@ -65,6 +71,23 @@ Your review should contain:
 - Use the line numbers from the NEW version of the file (side=RIGHT) unless
   you are specifically commenting on deleted code (side=LEFT)
 """
+
+
+def _wrap_tool_with_logging(fn: Callable) -> Callable:
+    """Wrap a tool function to log its calls and results."""
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        args_str = ", ".join(
+            [repr(a) for a in args] + [f"{k}={v!r}" for k, v in kwargs.items()]
+        )
+        logging.info(f"Tool call: {fn.__name__}({args_str})")
+        result = fn(*args, **kwargs)
+        result_preview = str(result)[:200]
+        logging.info(f"Tool result: {fn.__name__} -> {result_preview}...")
+        return result
+
+    return wrapper
 
 
 def _resolve_model(config: AgentConfig) -> Any:
@@ -175,7 +198,8 @@ async def run_review(
         config=config,
     )
     registry = build_tool_registry(tool_ctx)
-    tools = registry.get_all_tools()
+    raw_tools = registry.get_all_tools()
+    tools = [_wrap_tool_with_logging(t) for t in raw_tools]
 
     logging.info(
         f"Agent review: {len(changed_files)} changed files, "
