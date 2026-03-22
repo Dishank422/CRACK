@@ -28,7 +28,12 @@ jobs:
       with: { python-version: "3.13" }
 
     - name: Install CRACK from agentic-reviewer branch
-      run: pip install "CRACK.bot @ git+https://github.com/Dishank422/CRACK.git@jiviteshjain/agentic-reviewer"
+      run: |
+        git fetch origin jiviteshjain/agentic-reviewer
+        git checkout origin/jiviteshjain/agentic-reviewer -- CRACK/ pyproject.toml poetry.lock
+        pip install poetry
+        poetry install
+        echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
 
     - name: Run agent-based AI code review
       env:
