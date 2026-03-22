@@ -27,33 +27,27 @@ jobs:
       uses: actions/setup-python@v6
       with: { python-version: "3.13" }
 
-    - name: Install CRACK
+    - name: Install CRACK from agentic-reviewer branch
       run: |
         pip install poetry
+        git fetch origin jiviteshjain/agentic-reviewer
+        git checkout origin/jiviteshjain/agentic-reviewer -- CRACK/ pyproject.toml
         poetry install
         echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
 
-    - name: Run AI code review
+    - name: Run agent-based AI code review
       env:
-        # OpenAI Setup:
-        # LLM_API_TYPE: openai
-        # LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-        # MODEL: "gpt-4.1"
-        LLM_API_TYPE: google
-        LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
-        MODEL: gemini-3-flash-preview
+        CRACK_AGENT_MODEL: gemini-2.5-flash
+        GOOGLE_API_KEY: ${{ secrets.LLM_API_KEY }}
         CRACK_DEBUG: "1"
         PR_NUMBER_FROM_WORKFLOW_DISPATCH: ${{ github.event.inputs.pr_number || github.event.pull_request.number }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        CRACK --verbose review
-        # alternative way to capture PR base
-        # CRACK --verbose review ${{ github.event_name == 'pull_request' && github.event.pull_request.base.ref && format(' --against="origin/{0}"', github.event.pull_request.base.ref) || '' }}
-        CRACK github-comment
+        CRACK --verbose agent-review --pr ${{ github.event.inputs.pr_number || github.event.pull_request.number }}
+        CRACK agent-github-review
 
     - uses: actions/upload-artifact@v6
       with:
         name: CRACK-code-review-results
         path: |
-          code-review-report.md
-          code-review-report.json
+          agent-review-result.json
