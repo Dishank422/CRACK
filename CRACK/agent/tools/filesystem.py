@@ -21,7 +21,9 @@ def _sanitize_path(repo_path: str, relative_path: str) -> str:
     """
     repo = Path(repo_path).resolve()
     target = (repo / relative_path).resolve()
-    if not str(target).startswith(str(repo)):
+    try:
+        target.relative_to(repo)
+    except ValueError:
         raise ValueError(f"Path '{relative_path}' resolves outside the repository.")
     return str(target)
 
@@ -95,7 +97,7 @@ class FilesystemToolProvider(ToolProvider):
             ]
             if file_glob:
                 cmd.extend(["--glob", file_glob])
-            cmd.append(pattern)
+            cmd.extend(["--", pattern])
             cmd.append(repo_path)
 
             try:
@@ -108,7 +110,7 @@ class FilesystemToolProvider(ToolProvider):
                 )
             except FileNotFoundError:
                 # Fallback to grep if rg is not installed
-                cmd = ["grep", "-rn", "--include", file_glob or "*", pattern, repo_path]
+                cmd = ["grep", "-rn", "--include", file_glob or "*", "--", pattern, repo_path]
                 try:
                     result = subprocess.run(
                         cmd, capture_output=True, text=True, timeout=30

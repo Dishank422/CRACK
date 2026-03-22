@@ -61,7 +61,7 @@ def post_github_review(
     if commit_sha:
         body["commit_id"] = commit_sha
 
-    resp = requests.post(url, headers=headers, json=body)
+    resp = requests.post(url, headers=headers, json=body, timeout=30)
 
     if 200 <= resp.status_code < 300:
         logging.info(
@@ -74,9 +74,9 @@ def post_github_review(
         f"Failed to post review: {resp.status_code} {resp.reason}\n{resp.text}"
     )
 
-    # If the batch fails (e.g., a comment references an invalid line),
-    # try posting just the summary without inline comments as a fallback.
-    if api_comments:
+    # If inline comments had validation errors (invalid line numbers, etc.),
+    # retry with just the summary. Only worth retrying on 422.
+    if resp.status_code == 422 and api_comments:
         logging.info("Retrying without inline comments...")
         fallback_body = _build_fallback_body(review)
         body_no_comments = {
@@ -87,7 +87,7 @@ def post_github_review(
         if commit_sha:
             body_no_comments["commit_id"] = commit_sha
 
-        resp2 = requests.post(url, headers=headers, json=body_no_comments)
+        resp2 = requests.post(url, headers=headers, json=body_no_comments, timeout=30)
         if 200 <= resp2.status_code < 300:
             logging.info("Posted review summary (without inline comments) as fallback.")
             return True
