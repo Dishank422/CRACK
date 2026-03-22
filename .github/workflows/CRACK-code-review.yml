@@ -28,17 +28,17 @@ jobs:
       with: { python-version: "3.13" }
 
     - name: Install CRACK from agentic-reviewer branch
-      run: |
-        pip install poetry
-        git fetch origin jiviteshjain/agentic-reviewer
-        git checkout origin/jiviteshjain/agentic-reviewer -- CRACK/ pyproject.toml
-        poetry install
-        echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
+      run: pip install "CRACK.bot @ git+https://github.com/Dishank422/CRACK.git@jiviteshjain/agentic-reviewer"
 
     - name: Run agent-based AI code review
       env:
-        CRACK_AGENT_MODEL: gemini-2.5-flash
-        GOOGLE_API_KEY: ${{ secrets.LLM_API_KEY }}
+        # Legacy: needed by bootstrap/microcore which runs before our agent code
+        LLM_API_TYPE: google
+        LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        MODEL: gemini-2.5-flash
+        # Agent config: PydanticAI reads GEMINI_API_KEY for Google models
+        CRACK_AGENT_MODEL: google-gla:gemini-2.5-flash
+        GEMINI_API_KEY: ${{ secrets.LLM_API_KEY }}
         CRACK_DEBUG: "1"
         PR_NUMBER_FROM_WORKFLOW_DISPATCH: ${{ github.event.inputs.pr_number || github.event.pull_request.number }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
