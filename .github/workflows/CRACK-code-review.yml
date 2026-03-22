@@ -27,10 +27,8 @@ jobs:
       uses: actions/setup-python@v6
       with: { python-version: "3.13" }
 
-    - name: Install CRACK from agentic-reviewer branch
+    - name: Install CRACK
       run: |
-        git fetch origin jiviteshjain/agentic-reviewer
-        git checkout origin/jiviteshjain/agentic-reviewer -- CRACK/ pyproject.toml poetry.lock
         pip install poetry
         poetry install
         echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
