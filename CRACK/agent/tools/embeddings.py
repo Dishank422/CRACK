@@ -241,7 +241,11 @@ class EmbeddingToolProvider(ToolProvider):
         changed_files = {f["path"] for f in (self.ctx.changed_files or [])}
 
         logging.info(f"Loading embedding model: {EMBEDDING_MODEL}")
-        self._model = SentenceTransformer(EMBEDDING_MODEL, trust_remote_code=True)
+        try:
+            self._model = SentenceTransformer(EMBEDDING_MODEL, trust_remote_code=True)
+        except Exception as e:
+            logging.warning(f"Failed to load embedding model: {e}; semantic search disabled.")
+            return
 
         # Try loading cache
         index, metadata = _load_cache(repo_path)
