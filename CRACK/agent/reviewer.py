@@ -19,6 +19,7 @@ from .tools.base import ToolContext
 from .tools.filesystem import FilesystemToolProvider
 from .tools.diff import DiffToolProvider
 from .tools.github import GitHubToolProvider
+from .tools.embeddings import EmbeddingToolProvider
 
 
 SYSTEM_PROMPT = """\
@@ -50,6 +51,7 @@ YOU MUST USE TOOLS TO INVESTIGATE BEFORE PRODUCING YOUR REVIEW. Do not skip this
    - read_file to follow imports and understand dependencies
    - get_issue_or_pr if you see issue/PR references like #42 or "fixes #123"
    - list_directory to understand project structure if needed
+   - semantic_search to find conceptually related code when you don't know exact names
 3. Only AFTER investigating with tools, produce your final review.
 
 ## Tool usage guidelines
@@ -156,6 +158,7 @@ def build_tool_registry(tool_ctx: ToolContext) -> ToolRegistry:
     registry.register(DiffToolProvider)
     if tool_ctx.github_token and tool_ctx.github_repo:
         registry.register(GitHubToolProvider)
+    registry.register(EmbeddingToolProvider)
     registry.initialize_all()
     return registry
 
