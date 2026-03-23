@@ -29,9 +29,17 @@ jobs:
 
     - name: Install CRACK
       run: |
+        pip install torch --index-url https://download.pytorch.org/whl/cpu
         pip install poetry
         poetry install
         echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
+
+    - name: Restore embedding cache
+      uses: actions/cache@v4
+      with:
+        path: .crack-embeddings
+        key: crack-embeddings-${{ github.head_ref }}
+        restore-keys: crack-embeddings-
 
     - name: Run agent-based AI code review
       env:
