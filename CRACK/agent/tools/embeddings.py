@@ -25,7 +25,8 @@ CACHE_DIR = ".crack-embeddings"
 INDEX_FILE = "index.faiss"
 METADATA_FILE = "metadata.json"
 
-EMBEDDING_MODEL = "sirasagi62/code-rank-embed-onnx"
+EMBEDDING_MODEL = "Alibaba-NLP/gte-modernbert-base"
+EMBEDDING_ONNX_FILE = "onnx/model_int8.onnx"
 EMBEDDING_DIM = 768
 CHUNK_SIZE = 512  # tokens
 
@@ -251,14 +252,21 @@ class EmbeddingToolProvider(ToolProvider):
         logging.info(f"Loading embedding model: {EMBEDDING_MODEL}")
         try:
             self._model = SentenceTransformer(
-                EMBEDDING_MODEL, backend="onnx", trust_remote_code=True
+                EMBEDDING_MODEL, backend="onnx",
+                model_kwargs={"file_name": EMBEDDING_ONNX_FILE},
             )
         except Exception as e:
             logging.warning(f"Failed to load embedding model: {e}; semantic search disabled.")
             return
 
-        # Try loading cache
+        # Try loading cache — invalidate if model changed
         index, metadata = _load_cache(repo_path)
+        if metadata is not None and metadata.get("model") != EMBEDDING_MODEL:
+            logging.info(
+                f"Cache model mismatch: {metadata.get('model')} != {EMBEDDING_MODEL}. "
+                "Rebuilding index."
+            )
+            index, metadata = None, None
 
         if index is not None and metadata is not None:
             # Incremental update: remove chunks for changed/deleted files, re-embed them
@@ -285,7 +293,7 @@ class EmbeddingToolProvider(ToolProvider):
         else:
             # Cold start: embed everything
             index = _new_index()
-            metadata = {"next_id": 0, "chunks": {}, "file_to_ids": {}}
+            metadata = {"next_id": 0, "model": EMBEDDING_MODEL, "chunks": {}, "file_to_ids": {}}
             chunks = metadata["chunks"]
             file_to_ids = metadata["file_to_ids"]
             next_id = 0
@@ -322,6 +330,7 @@ class EmbeddingToolProvider(ToolProvider):
                 logging.info(f"Embedded {len(all_new_chunks)} new chunks")
 
         metadata["next_id"] = next_id
+        metadata["model"] = EMBEDDING_MODEL
         metadata["chunks"] = chunks
         metadata["file_to_ids"] = file_to_ids
 
