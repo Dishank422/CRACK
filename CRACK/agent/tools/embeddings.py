@@ -25,7 +25,7 @@ CACHE_DIR = ".crack-embeddings"
 INDEX_FILE = "index.faiss"
 METADATA_FILE = "metadata.json"
 
-EMBEDDING_MODEL = "nomic-ai/CodeRankEmbed"
+EMBEDDING_MODEL = "sirasagi62/code-rank-embed-onnx"
 EMBEDDING_DIM = 768
 CHUNK_SIZE = 512  # tokens
 
@@ -251,17 +251,11 @@ class EmbeddingToolProvider(ToolProvider):
         logging.info(f"Loading embedding model: {EMBEDDING_MODEL}")
         try:
             self._model = SentenceTransformer(
-                EMBEDDING_MODEL, trust_remote_code=True, backend="onnx"
+                EMBEDDING_MODEL, backend="onnx", trust_remote_code=True
             )
-        except Exception:
-            logging.info("ONNX backend unavailable, falling back to PyTorch")
-            try:
-                self._model = SentenceTransformer(
-                    EMBEDDING_MODEL, trust_remote_code=True
-                )
-            except Exception as e:
-                logging.warning(f"Failed to load embedding model: {e}; semantic search disabled.")
-                return
+        except Exception as e:
+            logging.warning(f"Failed to load embedding model: {e}; semantic search disabled.")
+            return
 
         # Try loading cache
         index, metadata = _load_cache(repo_path)
