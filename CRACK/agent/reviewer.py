@@ -36,6 +36,7 @@ Your goal is to produce a thorough, actionable code review. Focus on:
 Do NOT comment on:
 - Minor style or formatting issues (these are handled by linters)
 - Obvious or trivial things that add no value
+- Positive/praise inline comments (e.g. "good job", "nice pattern") — only flag issues
 - Things that are clearly intentional design decisions without real downsides
 
 ## Your workflow

@@ -35,7 +35,7 @@ CODE_EXTENSIONS = {
     ".hpp", ".cs", ".rb", ".php", ".swift", ".kt", ".scala", ".sh", ".bash", ".zsh",
     ".sql", ".r", ".m", ".mm", ".lua", ".pl", ".pm", ".ex", ".exs", ".erl", ".hs",
     ".ml", ".mli", ".fs", ".fsx", ".clj", ".cljs", ".vim", ".el", ".jl",
-    ".yaml", ".yml", ".toml", ".json", ".xml", ".html", ".css", ".scss", ".less",
+    ".yaml", ".yml", ".toml", ".xml", ".html", ".css", ".scss", ".less",
     ".md", ".rst", ".txt", ".cfg", ".ini", ".conf",
 }
 
@@ -250,10 +250,18 @@ class EmbeddingToolProvider(ToolProvider):
 
         logging.info(f"Loading embedding model: {EMBEDDING_MODEL}")
         try:
-            self._model = SentenceTransformer(EMBEDDING_MODEL, trust_remote_code=True)
-        except Exception as e:
-            logging.warning(f"Failed to load embedding model: {e}; semantic search disabled.")
-            return
+            self._model = SentenceTransformer(
+                EMBEDDING_MODEL, trust_remote_code=True, backend="onnx"
+            )
+        except Exception:
+            logging.info("ONNX backend unavailable, falling back to PyTorch")
+            try:
+                self._model = SentenceTransformer(
+                    EMBEDDING_MODEL, trust_remote_code=True
+                )
+            except Exception as e:
+                logging.warning(f"Failed to load embedding model: {e}; semantic search disabled.")
+                return
 
         # Try loading cache
         index, metadata = _load_cache(repo_path)
