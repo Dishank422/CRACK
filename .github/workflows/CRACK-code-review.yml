@@ -30,6 +30,9 @@ jobs:
     - name: Install CRACK
       run: |
         pip install poetry
+        poetry env use python
+        VENV_PIP="$(poetry env info --path)/bin/pip"
+        $VENV_PIP install torch --index-url https://download.pytorch.org/whl/cpu
         poetry install
         echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
 
