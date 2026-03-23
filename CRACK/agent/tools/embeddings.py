@@ -68,6 +68,28 @@ def _collect_files(repo_path: str) -> list[str]:
     return files
 
 
+_LANG_MAP = {
+    ".py": "python", ".js": "javascript", ".ts": "typescript",
+    ".tsx": "tsx", ".jsx": "javascript", ".java": "java",
+    ".go": "go", ".rs": "rust", ".c": "c", ".cpp": "cpp",
+    ".h": "c", ".hpp": "cpp", ".cs": "c_sharp", ".rb": "ruby",
+    ".php": "php", ".swift": "swift", ".kt": "kotlin", ".scala": "scala",
+    ".sh": "bash", ".bash": "bash", ".lua": "lua", ".hs": "haskell",
+    ".ml": "ocaml", ".ex": "elixir", ".exs": "elixir", ".erl": "erlang",
+    ".jl": "julia", ".r": "r",
+}
+
+_chunker_cache: dict = {}
+
+
+def _get_chunker(language: str):
+    """Get or create a cached CodeChunker for the given language."""
+    if language not in _chunker_cache:
+        from chonkie import CodeChunker
+        _chunker_cache[language] = CodeChunker(language=language, chunk_size=CHUNK_SIZE)
+    return _chunker_cache[language]
+
+
 def _chunk_file(repo_path: str, rel_path: str) -> list[dict]:
     """Chunk a single file using Chonkie's CodeChunker with AST-based splitting."""
     full_path = os.path.join(repo_path, rel_path)
@@ -81,27 +103,13 @@ def _chunk_file(repo_path: str, rel_path: str) -> list[dict]:
         return []
 
     try:
-        from chonkie import CodeChunker
-
         ext = os.path.splitext(rel_path)[1].lower()
-        # Map extensions to tree-sitter language names
-        lang_map = {
-            ".py": "python", ".js": "javascript", ".ts": "typescript",
-            ".tsx": "tsx", ".jsx": "javascript", ".java": "java",
-            ".go": "go", ".rs": "rust", ".c": "c", ".cpp": "cpp",
-            ".h": "c", ".hpp": "cpp", ".cs": "c_sharp", ".rb": "ruby",
-            ".php": "php", ".swift": "swift", ".kt": "kotlin", ".scala": "scala",
-            ".sh": "bash", ".bash": "bash", ".lua": "lua", ".hs": "haskell",
-            ".ml": "ocaml", ".ex": "elixir", ".exs": "elixir", ".erl": "erlang",
-            ".jl": "julia", ".r": "r",
-        }
-        language = lang_map.get(ext)
+        language = _LANG_MAP.get(ext)
 
         if language:
-            chunker = CodeChunker(language=language, chunk_size=CHUNK_SIZE)
+            chunker = _get_chunker(language)
             chunks = chunker.chunk(content)
         else:
-            # For non-parseable files, fall back to simple line-based splitting
             chunks = None
     except Exception:
         chunks = None
@@ -201,7 +209,7 @@ def _embed_texts(model, texts: list[str]):
     if not texts:
         return np.empty((0, EMBEDDING_DIM), dtype=np.float32)
     embeddings = model.encode(
-        texts, batch_size=64, show_progress_bar=False, normalize_embeddings=True
+        texts, batch_size=64, show_progress_bar=True, normalize_embeddings=True
     )
     return np.array(embeddings, dtype=np.float32)
 
@@ -285,7 +293,10 @@ class EmbeddingToolProvider(ToolProvider):
         # Chunk and embed new/changed files
         if files_to_embed:
             all_new_chunks = []
-            for f in files_to_embed:
+            total = len(files_to_embed)
+            for i, f in enumerate(files_to_embed):
+                if total > 10 and (i + 1) % max(1, total // 10) == 0:
+                    logging.info(f"Chunking files: {i + 1}/{total}")
                 all_new_chunks.extend(_chunk_file(repo_path, f))
 
             if all_new_chunks:
