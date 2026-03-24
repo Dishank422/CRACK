@@ -116,6 +116,12 @@ jobs:
       with: { python-version: "3.13" }
     - name: Install AI Code Review tool
       run: pip install CRACK.bot~=4.0
+    - name: Restore embedding cache
+      uses: actions/cache@v4
+      with:
+        path: .crack-embeddings
+        key: crack-embeddings-${{ github.head_ref }}
+        restore-keys: crack-embeddings-
     - name: Run AI code analysis
       env:
         LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
@@ -136,8 +142,8 @@ jobs:
 
 > ⚠️ Make sure to add `LLM_API_KEY` to your repository's GitHub secrets.
 
-💪 Done!  
-PRs to your repository will now receive AI code reviews automatically. ✨  
+💪 Done!
+PRs to your repository will now receive AI code reviews automatically. ✨
 See [GitHub Setup Guide](https://github.com/Dishank422/CRACK/blob/main/documentation/github_setup.md) for more details.
 
 ### 2. Running Code Analysis Locally<a id="2-running-code-analysis-locally"></a>

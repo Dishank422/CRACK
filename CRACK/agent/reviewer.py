@@ -19,6 +19,7 @@ from .tools.base import ToolContext
 from .tools.filesystem import FilesystemToolProvider
 from .tools.diff import DiffToolProvider
 from .tools.github import GitHubToolProvider
+from .tools.embeddings import EmbeddingToolProvider
 
 
 SYSTEM_PROMPT = """\
@@ -35,6 +36,7 @@ Your goal is to produce a thorough, actionable code review. Focus on:
 Do NOT comment on:
 - Minor style or formatting issues (these are handled by linters)
 - Obvious or trivial things that add no value
+- Positive/praise inline comments (e.g. "good job", "nice pattern") — only flag issues
 - Things that are clearly intentional design decisions without real downsides
 
 ## Your workflow
@@ -50,6 +52,7 @@ YOU MUST USE TOOLS TO INVESTIGATE BEFORE PRODUCING YOUR REVIEW. Do not skip this
    - read_file to follow imports and understand dependencies
    - get_issue_or_pr if you see issue/PR references like #42 or "fixes #123"
    - list_directory to understand project structure if needed
+   - semantic_search to find conceptually related code when you don't know exact names
 3. Only AFTER investigating with tools, produce your final review.
 
 ## Tool usage guidelines
@@ -59,6 +62,8 @@ YOU MUST USE TOOLS TO INVESTIGATE BEFORE PRODUCING YOUR REVIEW. Do not skip this
   verify that API contracts match between caller and callee.
 - You have a tool call budget, so focus on the highest-value investigations.
 - DO NOT produce your review output without having made at least one tool call first.
+- IMPORTANT: You MUST use the semantic_search tool at least once during your investigation.
+  Use it to find code that is conceptually related to the changes in this PR.
 
 ## Review output
 
@@ -156,6 +161,7 @@ def build_tool_registry(tool_ctx: ToolContext) -> ToolRegistry:
     registry.register(DiffToolProvider)
     if tool_ctx.github_token and tool_ctx.github_repo:
         registry.register(GitHubToolProvider)
+    registry.register(EmbeddingToolProvider)
     registry.initialize_all()
     return registry
 

@@ -71,6 +71,10 @@ fastcore= "~=1.11.3"
 pydantic-ai = ">=1.0.0,<2"
 tiktoken = ">=0.7.0,<1"
 requests = "^2.31.0"
+# Embedding-based semantic search
+faiss-cpu = ">=1.7.0,<2"
+fastembed = ">=0.4.0"
+chonkie = {version = ">=1.0.0,<2", extras = ["code"]}
 
 [tool.poetry.group.dev.dependencies]
 flake8 = "*"
