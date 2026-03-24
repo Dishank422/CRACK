@@ -25,8 +25,8 @@ CACHE_DIR = ".crack-embeddings"
 INDEX_FILE = "index.faiss"
 METADATA_FILE = "metadata.json"
 
-EMBEDDING_MODEL = "jinaai/jina-embeddings-v2-base-code"
-EMBEDDING_DIM = 768
+EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
+EMBEDDING_DIM = 384
 CHUNK_SIZE = 512  # tokens
 
 # File extensions worth embedding (skip binaries, lockfiles, etc.)
@@ -208,8 +208,15 @@ def _embed_texts(model, texts: list[str]):
 
     if not texts:
         return np.empty((0, EMBEDDING_DIM), dtype=np.float32)
-    embeddings = list(model.embed(texts, batch_size=64))
-    return np.array(embeddings, dtype=np.float32)
+    total = len(texts)
+    results = []
+    log_interval = max(1, total // 5)
+    for i, emb in enumerate(model.embed(texts, batch_size=64)):
+        results.append(emb)
+        done = i + 1
+        if done % log_interval == 0 or done == total:
+            logging.info(f"Embedding: {done}/{total} chunks")
+    return np.array(results, dtype=np.float32)
 
 
 class EmbeddingToolProvider(ToolProvider):
