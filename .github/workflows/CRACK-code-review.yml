@@ -56,8 +56,9 @@ jobs:
         PR_NUMBER_FROM_WORKFLOW_DISPATCH: ${{ github.event.inputs.pr_number || github.event.pull_request.number }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        CRACK --verbose agent-review --pr ${{ github.event.inputs.pr_number || github.event.pull_request.number }} --post-to-github
-
+        CRACK --verbose agent-review --pr ${{ github.event.inputs.pr_number || github.event.pull_request.number }}
+        CRACK agent-github-review
+        
     - uses: actions/upload-artifact@v6
       with:
         name: CRACK-code-review-results
