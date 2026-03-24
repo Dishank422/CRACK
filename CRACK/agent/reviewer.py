@@ -23,7 +23,6 @@ from .tools.filesystem import FilesystemToolProvider
 from .tools.diff import DiffToolProvider
 from .tools.github import GitHubToolProvider
 from .tools.embeddings import EmbeddingToolProvider
-from .code_checks.base import CodeCheckSpec, AVAILABLE_CODE_CHECKS
 
 
 CODE_CHECK_ENV_VAR = "CRACK_AGENT_CODE_CHECKS"
@@ -44,11 +43,18 @@ Workflow requirements:
 3. Prioritize high-value checks: caller/callee contracts, boundary behavior, and missing tests.
 4. Keep findings tightly scoped to enabled checks only.
 
-Output requirements:
-- Return structured output with summary, event, and inline comments.
-- Comments must be actionable and explain why the issue matters.
-- Use REQUEST_CHANGES only for real defects/risks within enabled scopes.
-- Use RIGHT-side line numbers for new code unless specifically commenting on deletions.
+Your review should contain:
+- A concise summary of what the PR does and your overall assessment
+- Inline comments on specific lines where you found issues
+- Each inline comment should be actionable and explain WHY something is a problem
+- Set the event to REQUEST_CHANGES only for genuine bugs or security issues;
+  use COMMENT for suggestions and observations
+- Use the line numbers from the NEW version of the file (side=RIGHT) unless
+  you are specifically commenting on deleted code (side=LEFT)
+- IMPORTANT: Inline comments can ONLY be placed on lines that appear in the diff
+  (within the @@ hunk ranges). Comments on lines outside the diff will be moved
+  to the review body instead of appearing inline. Prefer commenting on changed
+  lines for maximum impact.
 
 Do NOT comment on style/formatting or unrelated concerns outside enabled scopes.
 """
