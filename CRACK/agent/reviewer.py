@@ -62,8 +62,6 @@ YOU MUST USE TOOLS TO INVESTIGATE BEFORE PRODUCING YOUR REVIEW. Do not skip this
   verify that API contracts match between caller and callee.
 - You have a tool call budget, so focus on the highest-value investigations.
 - DO NOT produce your review output without having made at least one tool call first.
-- IMPORTANT: You MUST use the semantic_search tool at least once during your investigation.
-  Use it to find code that is conceptually related to the changes in this PR.
 
 ## Review output
 
