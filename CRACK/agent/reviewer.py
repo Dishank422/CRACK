@@ -13,6 +13,7 @@ from typing import Any, Callable
 from pydantic_ai import Agent, UsageLimits
 from pydantic_ai.settings import ModelSettings
 
+import os
 from .config import AgentConfig
 from .models import ReviewEvent, ReviewResult
 from .code_checks import AVAILABLE_CODE_CHECKS, CodeCheckSpec
@@ -22,6 +23,7 @@ from .tools.filesystem import FilesystemToolProvider
 from .tools.diff import DiffToolProvider
 from .tools.github import GitHubToolProvider
 from .tools.embeddings import EmbeddingToolProvider
+from .code_checks.base import CodeCheckSpec, AVAILABLE_CODE_CHECKS
 
 
 CODE_CHECK_ENV_VAR = "CRACK_AGENT_CODE_CHECKS"
