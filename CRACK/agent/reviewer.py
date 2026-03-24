@@ -12,14 +12,16 @@ from typing import Any, Callable
 from pydantic_ai import Agent, UsageLimits
 from pydantic_ai.settings import ModelSettings
 
+import os
 from .config import AgentConfig
-from .models import ReviewResult
+from .models import ReviewResult, ReviewEvent
 from .tools import ToolRegistry
 from .tools.base import ToolContext
 from .tools.filesystem import FilesystemToolProvider
 from .tools.diff import DiffToolProvider
 from .tools.github import GitHubToolProvider
 from .tools.embeddings import EmbeddingToolProvider
+from .code_checks.base import CodeCheckSpec, AVAILABLE_CODE_CHECKS
 
 
 CODE_CHECK_ENV_VAR = "CRACK_AGENT_CODE_CHECKS"
@@ -441,4 +443,4 @@ async def run_review(
         result.usage().tool_calls,
     )
 
-    return review
+    return merged_review
