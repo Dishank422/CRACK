@@ -244,47 +244,6 @@ def _merge_review_event(events: list[ReviewEvent]) -> ReviewEvent:
     return ReviewEvent.COMMENT
 
 
-def _merge_check_results(results: list[tuple[CodeCheckSpec, ReviewResult]]) -> ReviewResult:
-    """Backwards-compatible helper retained for older call sites."""
-    if not results:
-        return ReviewResult(
-            summary=(
-                "No opt-in code checks were enabled. "
-                f"Set {CODE_CHECK_ENV_VAR} to one or more check IDs."
-            ),
-            event=ReviewEvent.COMMENT,
-            comments=[],
-        )
-
-    merged_summaries: list[str] = []
-    merged_comments = []
-    seen_comment_keys: set[tuple[Any, ...]] = set()
-    events: list[ReviewEvent] = []
-
-    for check_spec, review in results:
-        events.append(review.event)
-        merged_summaries.append(f"### {check_spec.check_id}\n{review.summary}")
-        for comment in review.comments:
-            key = (
-                comment.path,
-                comment.line,
-                comment.side,
-                comment.start_line,
-                comment.start_side,
-                comment.body,
-            )
-            if key in seen_comment_keys:
-                continue
-            seen_comment_keys.add(key)
-            merged_comments.append(comment)
-
-    return ReviewResult(
-        summary="\n\n".join(merged_summaries),
-        event=_merge_review_event(events),
-        comments=merged_comments,
-    )
-
-
 def _wrap_tool_with_logging(fn: Callable) -> Callable:
     """Wrap a tool function to log its calls and results."""
 
@@ -425,12 +384,19 @@ async def run_review(
         f"checks={_enabled_check_ids(enabled_checks)}"
     )
 
+    file_list = "\n".join(f"  {f['status']:>10}  {f['path']}" for f in changed_files)
+    change_list_prompt = (
+        f"Please review this pull request.\n\n"
+        f"## Changed files\n{file_list}\n\n"
+        f"## Diff\n```diff\n{diff_text}\n```"
+    )
+
     # Shared model and agent.
     model = _resolve_model(config)
     turn_agent = Agent(
         model,
         output_type=ReviewResult,
-        system_prompt=GENERIC_SYSTEM_PROMPT,
+        system_prompt=GENERIC_SYSTEM_PROMPT+"\n\n"+change_list_prompt,
         tools=tools,
         model_settings=ModelSettings(temperature=config.model_temperature),
     )
