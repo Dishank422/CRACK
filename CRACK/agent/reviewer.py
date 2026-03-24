@@ -7,15 +7,13 @@ call tools to explore the codebase, and collects a structured ReviewResult.
 
 import functools
 import logging
-import os
 from typing import Any, Callable
 
 from pydantic_ai import Agent, UsageLimits
 from pydantic_ai.settings import ModelSettings
 
 from .config import AgentConfig
-from .models import ReviewEvent, ReviewResult
-from .code_checks import AVAILABLE_CODE_CHECKS, CodeCheckSpec
+from .models import ReviewResult
 from .tools import ToolRegistry
 from .tools.base import ToolContext
 from .tools.filesystem import FilesystemToolProvider
@@ -24,107 +22,58 @@ from .tools.github import GitHubToolProvider
 from .tools.embeddings import EmbeddingToolProvider
 
 
-CODE_CHECK_ENV_VAR = "CRACK_AGENT_CODE_CHECKS"
+SYSTEM_PROMPT = """\
+You are an expert code reviewer. You are reviewing a pull request (PR) on GitHub.
 
+Your goal is to produce a thorough, actionable code review. Focus on:
+- Bugs and logic errors
+- Security vulnerabilities
+- Performance issues
+- API misuse or incorrect assumptions
+- Missing error handling
+- Breaking changes or backward compatibility issues
 
-def _split_checks(raw_checks: str) -> list[str]:
-    """Split comma-separated check IDs and normalize them."""
-    return [part.strip().lower() for part in raw_checks.split(",") if part.strip()]
+Do NOT comment on:
+- Minor style or formatting issues (these are handled by linters)
+- Obvious or trivial things that add no value
+- Positive/praise inline comments (e.g. "good job", "nice pattern") — only flag issues
+- Things that are clearly intentional design decisions without real downsides
 
+## Your workflow
 
-def _resolve_enabled_checks(config: AgentConfig) -> list[str]:
-    """Resolve requested code-check IDs from config (optional) and environment."""
-    checks: list[str] = []
+YOU MUST USE TOOLS TO INVESTIGATE BEFORE PRODUCING YOUR REVIEW. Do not skip this step.
 
-    # Optional config support: allows AgentConfig to add this field later
-    config_checks = getattr(config, "code_checks", None)
-    if isinstance(config_checks, str):
-        checks.extend(_split_checks(config_checks))
-    elif isinstance(config_checks, list):
-        checks.extend(str(x).strip().lower() for x in config_checks if str(x).strip())
+1. First, read the diff and changed file list provided below to understand what the PR does.
+2. Then, BEFORE writing any review, use your tools to gather context. You should make
+   at least a few tool calls. Good investigations include:
+   - read_file to see the full file around changed code (the diff alone lacks context)
+   - search_repo to find callers/usages of modified functions or classes
+   - search_repo to check if tests exist for the changed code
+   - read_file to follow imports and understand dependencies
+   - get_issue_or_pr if you see issue/PR references like #42 or "fixes #123"
+   - list_directory to understand project structure if needed
+   - semantic_search to find conceptually related code when you don't know exact names
+3. Only AFTER investigating with tools, produce your final review.
 
-    # Primary workflow toggle
-    env_checks = os.getenv(CODE_CHECK_ENV_VAR, "")
-    if env_checks:
-        checks.extend(_split_checks(env_checks))
+## Tool usage guidelines
 
-    # De-duplicate while preserving order
-    seen: set[str] = set()
-    deduped: list[str] = []
-    for check in checks:
-        if check not in seen:
-            seen.add(check)
-            deduped.append(check)
+- Be targeted: investigate things that could reveal bugs or missing changes.
+- Prioritize: check callers of changed functions, look for missing test coverage,
+  verify that API contracts match between caller and callee.
+- You have a tool call budget, so focus on the highest-value investigations.
+- DO NOT produce your review output without having made at least one tool call first.
 
-    return deduped
+## Review output
 
-
-def _resolve_enabled_check_specs(config: AgentConfig) -> list[CodeCheckSpec]:
-    """Resolve known code checks from requested IDs and warn on unknown IDs."""
-    requested_checks = _resolve_enabled_checks(config)
-    if not requested_checks:
-        return []
-
-    unknown_checks = [check for check in requested_checks if check not in AVAILABLE_CODE_CHECKS]
-    if unknown_checks:
-        logging.warning(
-            "Unknown code checks requested (ignored): %s",
-            ", ".join(unknown_checks),
-        )
-
-    return [AVAILABLE_CODE_CHECKS[check] for check in requested_checks if check in AVAILABLE_CODE_CHECKS]
-
-
-def _merge_review_event(events: list[ReviewEvent]) -> ReviewEvent:
-    """Merge per-check events using conservative precedence."""
-    if any(event == ReviewEvent.REQUEST_CHANGES for event in events):
-        return ReviewEvent.REQUEST_CHANGES
-    if any(event == ReviewEvent.COMMENT for event in events):
-        return ReviewEvent.COMMENT
-    if any(event == ReviewEvent.APPROVE for event in events):
-        return ReviewEvent.APPROVE
-    return ReviewEvent.COMMENT
-
-
-def _merge_check_results(results: list[tuple[CodeCheckSpec, ReviewResult]]) -> ReviewResult:
-    """Merge multiple per-check ReviewResult payloads into one output object."""
-    if not results:
-        return ReviewResult(
-            summary=(
-                "No opt-in code checks were enabled. "
-                f"Set {CODE_CHECK_ENV_VAR} to one or more check IDs."
-            ),
-            event=ReviewEvent.COMMENT,
-            comments=[],
-        )
-
-    merged_summaries: list[str] = []
-    merged_comments = []
-    seen_comment_keys: set[tuple[Any, ...]] = set()
-    events: list[ReviewEvent] = []
-
-    for check_spec, review in results:
-        events.append(review.event)
-        merged_summaries.append(f"### {check_spec.check_id}\n{review.summary}")
-        for comment in review.comments:
-            key = (
-                comment.path,
-                comment.line,
-                comment.side,
-                comment.start_line,
-                comment.start_side,
-                comment.body,
-            )
-            if key in seen_comment_keys:
-                continue
-            seen_comment_keys.add(key)
-            merged_comments.append(comment)
-
-    return ReviewResult(
-        summary="\n\n".join(merged_summaries),
-        event=_merge_review_event(events),
-        comments=merged_comments,
-    )
+Your review should contain:
+- A concise summary of what the PR does and your overall assessment
+- Inline comments on specific lines where you found issues
+- Each inline comment should be actionable and explain WHY something is a problem
+- Set the event to REQUEST_CHANGES only for genuine bugs or security issues;
+  use COMMENT for suggestions and observations
+- Use the line numbers from the NEW version of the file (side=RIGHT) unless
+  you are specifically commenting on deleted code (side=LEFT)
+"""
 
 
 def _wrap_tool_with_logging(fn: Callable) -> Callable:
@@ -238,17 +187,9 @@ async def run_review(
         config: Agent configuration. If None, loaded from environment.
 
     Returns:
-        ReviewResult with merged summary, event, and inline comments.
+        ReviewResult with summary, event, and inline comments.
     """
     config = config or AgentConfig.from_env()
-    enabled_checks = _resolve_enabled_check_specs(config)
-    if not enabled_checks:
-        logging.warning(
-            "No opt-in checks enabled. Skipping LLM calls. "
-            "Set %s to run scoped reviews.",
-            CODE_CHECK_ENV_VAR,
-        )
-        return _merge_check_results([])
 
     # Build tools
     tool_ctx = build_tool_context(
@@ -266,12 +207,20 @@ async def run_review(
 
     logging.info(
         f"Agent review: {len(changed_files)} changed files, "
-        f"{len(tools)} tools available, model={config.model}, "
-        f"checks={[check.check_id for check in enabled_checks]}"
+        f"{len(tools)} tools available, model={config.model}"
     )
 
-    # Shared model and prompt payload used by each check run.
+    # Build the agent
     model = _resolve_model(config)
+    agent = Agent(
+        model,
+        output_type=ReviewResult,
+        system_prompt=SYSTEM_PROMPT,
+        tools=tools,
+        model_settings=ModelSettings(temperature=config.model_temperature),
+    )
+
+    # Build the initial user prompt with the diff included
     file_list = "\n".join(f"  {f['status']:>10}  {f['path']}" for f in changed_files)
     user_prompt = (
         f"Please review this pull request.\n\n"
@@ -279,45 +228,21 @@ async def run_review(
         f"## Diff\n```diff\n{diff_text}\n```"
     )
 
-    # Allocate per-check budgets so total usage stays bounded by config.
-    checks_count = len(enabled_checks)
-    per_check_requests = max(1, config.max_request_limit // checks_count)
-    per_check_tool_calls = max(1, config.max_tool_calls // checks_count)
-
-    check_results: list[tuple[CodeCheckSpec, ReviewResult]] = []
-    for check_spec in enabled_checks:
-        logging.info("Running code check: %s", check_spec.check_id)
-        agent = Agent(
-            model,
-            output_type=ReviewResult,
-            system_prompt=check_spec.system_prompt,
-            tools=tools,
-            model_settings=ModelSettings(temperature=config.model_temperature),
-        )
-
-        result = await agent.run(
-            user_prompt,
-            usage_limits=UsageLimits(
-                request_limit=per_check_requests,
-                tool_calls_limit=per_check_tool_calls,
-            ),
-        )
-        review = result.output
-        check_results.append((check_spec, review))
-        logging.info(
-            "Code check complete: %s, event=%s, comments=%s, usage: %s requests, %s tool calls",
-            check_spec.check_id,
-            review.event.value,
-            len(review.comments),
-            result.usage().requests,
-            result.usage().tool_calls,
-        )
-
-    merged_review = _merge_check_results(check_results)
-    logging.info(
-        "Merged review complete: checks=%s, event=%s, comments=%s",
-        len(check_results),
-        merged_review.event.value,
-        len(merged_review.comments),
+    # Run the agent loop
+    result = await agent.run(
+        user_prompt,
+        usage_limits=UsageLimits(
+            request_limit=config.max_request_limit,
+            tool_calls_limit=config.max_tool_calls,
+        ),
     )
-    return merged_review
+
+    review = result.output
+    logging.info(
+        f"Agent review complete: {len(review.comments)} inline comments, "
+        f"event={review.event.value}, "
+        f"usage: {result.usage().requests} requests, "
+        f"{result.usage().tool_calls} tool calls"
+    )
+
+    return review
