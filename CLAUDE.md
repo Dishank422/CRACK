@@ -10,7 +10,7 @@ CRACK is an AI-powered code review tool that works vendor-agnostically with any 
 
 ```bash
 # Install for local development
-make install          # pip install -e .
+make install          # uv sync --all-groups
 
 # Run tests (sets LLM_API_TYPE=NONE via conftest.py for offline testing)
 make test             # pytest --log-cli-level=INFO

@@ -16,7 +16,7 @@
         "node_modules",
         "package-lock.json",
         "dist",
-        "poetry.lock",
+        "uv.lock",
         "storage",
         "*.png",
         "*.svg",

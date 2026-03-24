@@ -1,12 +1,10 @@
-[tool.poetry]
+[project]
 name = "CRACK.bot"
-version = "4.0.3"
 description = "AI code review tool that works with any language model provider. It detects issues in GitHub pull requests or local changes—instantly, reliably, and without vendor lock-in."
 readme = "README.md"
 license = "MIT"
-homepage = "https://github.com/Dishank422/CRACK"
-repository = "https://github.com/Dishank422/CRACK"
-documentation = "https://github.com/Dishank422/CRACK#readme"
+requires-python = ">=3.11"
+dynamic = ["version"]
 keywords = [
     "static code analysis",
     "code review",
@@ -48,56 +46,62 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: MIT License",
 ]
-packages = [
-    { include = "CRACK" }
+dependencies = [
+    "ai-microcore>=5.0.0,<5.1.0",
+    "GitPython>=3.1.44,<4",
+    "unidiff>=0.7.5,<0.8",
+    "google-genai>=1.56.0,<1.57.0",
+    "anthropic>=0.57.1,<1",
+    "typer>=0.16.0,<0.22",
+    "ghapi~=1.0.8",
+    "jira>=3.10.5,<4",
+    "pydantic>=2.12.5,<3",
+    # fastcore dependency is fixed because 1.12+ does not work in python 3.11, used by ghapi
+    # https://github.com/AnswerDotAI/fastcore/pull/752
+    "fastcore~=1.11.3",
+    # Agent-based reviewer dependencies
+    "pydantic-ai>=1.0.0,<2",
+    "tiktoken>=0.7.0,<1",
+    "requests>=2.31.0,<3",
+    # Embedding-based semantic search
+    "faiss-cpu>=1.7.0,<2",
+    "fastembed>=0.4.0",
+    "chonkie[code]>=1.0.0,<2",
 ]
-[tool.poetry.urls]
+
+[project.urls]
+Homepage = "https://github.com/Dishank422/CRACK"
+Repository = "https://github.com/Dishank422/CRACK"
+Documentation = "https://github.com/Dishank422/CRACK#readme"
 "Bug Tracker" = "https://github.com/Dishank422/CRACK/issues"
-[tool.poetry.dependencies]
-python = "^3.11"
-ai-microcore = "~5.0.0"
-GitPython = "^3.1.44"
-unidiff = "^0.7.5"
-google-genai = "~1.56.0"
-anthropic = ">=0.57.1,<1"
-typer = ">=0.16.0,<0.22"
-ghapi = "~=1.0.8"
-jira = "^3.10.5"
-pydantic = "^2.12.5"
-# fastcore dependency is fixed becasue 1.12+ does not work in python 3.11, used by ghapi
-# https://github.com/AnswerDotAI/fastcore/pull/752
-fastcore= "~=1.11.3"
-# Agent-based reviewer dependencies
-pydantic-ai = ">=1.0.0,<2"
-tiktoken = ">=0.7.0,<1"
-requests = "^2.31.0"
-# Embedding-based semantic search
-faiss-cpu = ">=1.7.0,<2"
-fastembed = ">=0.4.0"
-chonkie = {version = ">=1.0.0,<2", extras = ["code"]}
 
-[tool.poetry.group.dev.dependencies]
-flake8 = "*"
-flake8-pyproject = "*"
-black = "*"
-build = "*"
-twine = "*"
-pylint = "*"
-pyflakes = "*"
-poetry = "*"
-
-[tool.poetry.group.test.dependencies]
-pytest = ">=7.4.3,<10"
-pytest-asyncio = ">=0.21.0,<2"
-pytest-mock = "^3.12.0"
-pytest-cov = ">=4.1.0,<8"
+[project.scripts]
+CRACK = "CRACK.entrypoint:main"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[tool.poetry.scripts]
-CRACK = "CRACK.entrypoint:main"
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["CRACK"]
+
+[dependency-groups]
+dev = [
+    "flake8",
+    "flake8-pyproject",
+    "black",
+    "pylint",
+    "pyflakes",
+]
+test = [
+    "pytest>=7.4.3,<10",
+    "pytest-asyncio>=0.21.0,<2",
+    "pytest-mock>=3.12.0,<4",
+    "pytest-cov>=4.1.0,<8",
+]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

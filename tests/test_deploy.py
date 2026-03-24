@@ -54,7 +54,7 @@ def test_deploy_github_creates_workflow_files(github_repo, monkeypatch):
 
     content = workflow.read_text(encoding="utf-8")
     assert "ANTHROPIC_API_KEY" in content
-    assert "CRACK" in content.lower()
+    assert "crack" in content.lower()
 
 
 def test_deploy_gitlab_creates_workflow_files(gitlab_repo, monkeypatch):
