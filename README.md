@@ -285,7 +285,7 @@ aux_files = [
 ]
 
 exclude_files = [
-    'poetry.lock',
+    'uv.lock',
 ]
 
 [prompt_vars]
@@ -339,8 +339,8 @@ Install dependencies:
 make install
 ```
 
-> **Note:** If `make` is not available on your system, you can run the underlying command directly:  
-> `pip install -e ".[dev]"`  
+> **Note:** If `make` is not available on your system, you can run the underlying command directly:
+> `uv sync --all-groups`
 > See the [Makefile](https://github.com/Dishank422/CRACK/blob/main/Makefile) for all available commands.
 
 Format code and check style:

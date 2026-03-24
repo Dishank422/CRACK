@@ -2,7 +2,7 @@ aux_files=[
     'documentation/command_line_reference.md'
 ]
 exclude_files=[
-    'poetry.lock',
+    'uv.lock',
 ]
 [prompt_vars]
 # Disable awards
