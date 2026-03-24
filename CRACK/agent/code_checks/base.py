@@ -9,4 +9,4 @@ class CodeCheckSpec:
 
     check_id: str
     title: str
-    system_prompt: str
+    guidance: str
