@@ -25,8 +25,7 @@ CACHE_DIR = ".crack-embeddings"
 INDEX_FILE = "index.faiss"
 METADATA_FILE = "metadata.json"
 
-EMBEDDING_MODEL = "Alibaba-NLP/gte-modernbert-base"
-EMBEDDING_ONNX_FILE = "onnx/model_int8.onnx"
+EMBEDDING_MODEL = "jinaai/jina-embeddings-v2-base-code"
 EMBEDDING_DIM = 768
 CHUNK_SIZE = 512  # tokens
 
@@ -204,14 +203,12 @@ def _new_index():
 
 
 def _embed_texts(model, texts: list[str]):
-    """Embed a list of texts using the sentence-transformers model."""
+    """Embed a list of texts using fastembed."""
     import numpy as np
 
     if not texts:
         return np.empty((0, EMBEDDING_DIM), dtype=np.float32)
-    embeddings = model.encode(
-        texts, batch_size=64, show_progress_bar=True, normalize_embeddings=True
-    )
+    embeddings = list(model.embed(texts, batch_size=64))
     return np.array(embeddings, dtype=np.float32)
 
 
@@ -239,7 +236,7 @@ class EmbeddingToolProvider(ToolProvider):
         try:
             import faiss  # noqa: F811
             import numpy as np  # noqa: F811
-            from sentence_transformers import SentenceTransformer
+            from fastembed import TextEmbedding
         except ImportError as e:
             logging.warning(
                 f"Semantic search dependencies not available ({e}); disabled."
@@ -251,10 +248,7 @@ class EmbeddingToolProvider(ToolProvider):
 
         logging.info(f"Loading embedding model: {EMBEDDING_MODEL}")
         try:
-            self._model = SentenceTransformer(
-                EMBEDDING_MODEL, backend="onnx",
-                model_kwargs={"file_name": EMBEDDING_ONNX_FILE},
-            )
+            self._model = TextEmbedding(model_name=EMBEDDING_MODEL)
         except Exception as e:
             logging.warning(f"Failed to load embedding model: {e}; semantic search disabled.")
             return

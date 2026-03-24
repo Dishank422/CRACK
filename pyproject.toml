@@ -73,7 +73,7 @@ tiktoken = ">=0.7.0,<1"
 requests = "^2.31.0"
 # Embedding-based semantic search
 faiss-cpu = ">=1.7.0,<2"
-sentence-transformers = {version = ">=3.0.0,<4", extras = ["onnx"]}
+fastembed = ">=0.4.0"
 chonkie = {version = ">=1.0.0,<2", extras = ["code"]}
 
 [tool.poetry.group.dev.dependencies]
