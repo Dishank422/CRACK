@@ -344,6 +344,7 @@ def cmd_agent_review(
     """Run the agent-based code review using PydanticAI."""
     from .agent import run_review, AgentConfig
     from .agent.github_review import post_github_review
+    from .agent.pr_context import fetch_pr_context
     from .gh_api import resolve_gh_token
 
     refs, merge_base = _consider_arg_all(all, refs, merge_base)
@@ -391,6 +392,27 @@ def cmd_agent_review(
 
         config = AgentConfig.from_env()
 
+        # Fetch PR context (timeline, previous reviews) if we have GitHub access
+        pr_context = None
+        if github_token and github_repo and pr:
+            pr_context = fetch_pr_context(
+                github_repo=github_repo,
+                pr_number=pr,
+                github_token=github_token,
+            )
+            # Compute incremental diff if we have a previous review
+            if pr_context.last_reviewed_commit:
+                try:
+                    incremental_diff = repo.git.diff(
+                        pr_context.last_reviewed_commit, "HEAD"
+                    )
+                    pr_context.incremental_diff = incremental_diff
+                    logging.info(
+                        f"Incremental diff computed from {pr_context.last_reviewed_commit[:8]}"
+                    )
+                except Exception as e:
+                    logging.warning(f"Could not compute incremental diff: {e}")
+
         # Run the agent review
         review_result = asyncio.run(
             run_review(
@@ -401,6 +423,7 @@ def cmd_agent_review(
                 github_repo=github_repo,
                 pr_number=pr,
                 config=config,
+                pr_context=pr_context,
             )
         )
 
