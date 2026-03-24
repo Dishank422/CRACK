@@ -444,6 +444,7 @@ def cmd_agent_review(
                 github_repo=github_repo,
                 pr_number=pr,
                 github_token=github_token,
+                commit_sha=repo.head.commit.hexsha,
                 diff_text=diff_text,
             )
             if not success:
