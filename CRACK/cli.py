@@ -336,6 +336,10 @@ def cmd_agent_review(
     pr: int = typer.Option(default=None, help="Pull request number"),
     out: str = arg_out(),
     all: bool = arg_all(),
+    post_to_github: bool = typer.Option(
+        default=False,
+        help="Post the review to GitHub as a PR review with inline comments.",
+    ),
 ):
     """Run the agent-based code review using PydanticAI."""
     from .agent import run_review, AgentConfig
@@ -423,86 +427,25 @@ def cmd_agent_review(
             json.dump(review_result.model_dump(), f, indent=2)
         logging.info(f"Agent review saved to {report_path}")
 
+        # Post to GitHub if requested
+        if post_to_github:
+            if not github_token:
+                logging.error("GitHub token required for --post-to-github.")
+                raise typer.Exit(1)
+            if not github_repo:
+                logging.error("Could not resolve GitHub repository for --post-to-github.")
+                raise typer.Exit(1)
+            if not pr:
+                logging.error("PR number required for --post-to-github.")
+                raise typer.Exit(1)
 
-@app.command(
-    name="agent-github-review",
-    help="Post an agent review result as a GitHub PR review with inline comments.",
-)
-def cmd_agent_github_review(
-    result_file: str = typer.Option(
-        default="agent-review-result.json",
-        help="Path to the agent review result JSON file.",
-    ),
-    pr: int = typer.Option(default=None, help="Pull request number"),
-    gh_repo: str = typer.Option(default=None, help="GitHub repo (owner/repo)"),
-    token: str = typer.Option("", help="GitHub token (or set GITHUB_TOKEN env var)"),
-    commit_sha: str = typer.Option(default=None, help="Commit SHA to anchor the review to"),
-):
-    """Post an agent review to GitHub as a PR review with inline comments."""
-    import json
-    from .agent.models import ReviewResult
-    from .agent.github_review import post_github_review
-    from .gh_api import resolve_gh_token
-
-    if not os.path.exists(result_file):
-        logging.error(f"Result file not found: {result_file}")
-        raise typer.Exit(1)
-
-    with open(result_file, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    review = ReviewResult.model_validate(data)
-
-    token = resolve_gh_token(token)
-    if not token:
-        print("GitHub token is required (--token or GITHUB_TOKEN env var).")
-        raise typer.Exit(1)
-
-    # Resolve PR number
-    if not pr:
-        pr_str = os.getenv("PR_NUMBER_FROM_WORKFLOW_DISPATCH")
-        if pr_str:
-            pr = int(pr_str)
-    if not pr:
-        config = ProjectConfig.load()
-        gh_env = config.prompt_vars.get("github_env", {})
-        pr_env_val = gh_env.get("github_pr_number", "")
-        if pr_env_val:
-            try:
-                if "/" in pr_env_val and "pull" in pr_env_val:
-                    parts = pr_env_val.strip("/").split("/")
-                    idx = parts.index("pull")
-                    pr = int(parts[idx + 1])
-                else:
-                    pr = int(pr_env_val)
-            except (ValueError, IndexError):
-                pass
-    if not pr:
-        logging.error("Could not resolve PR number.")
-        raise typer.Exit(1)
-
-    # Resolve repo
-    if not gh_repo:
-        config = ProjectConfig.load()
-        gh_env = config.prompt_vars.get("github_env", {})
-        gh_repo = gh_env.get("github_repo", "")
-    if not gh_repo:
-        try:
-            repo = Repo(".")
-            _, gh_repo = get_repo_domain_and_path(repo)
-            repo.close()
-        except Exception:
-            pass
-    if not gh_repo:
-        logging.error("Could not resolve GitHub repository.")
-        raise typer.Exit(1)
-
-    success = post_github_review(
-        review=review,
-        github_repo=gh_repo,
-        pr_number=pr,
-        github_token=token,
-        commit_sha=commit_sha,
-    )
-    if not success:
-        raise typer.Exit(1)
-    print(f"Review posted to {gh_repo}#{pr}")
+            success = post_github_review(
+                review=review_result,
+                github_repo=github_repo,
+                pr_number=pr,
+                github_token=github_token,
+                diff_text=diff_text,
+            )
+            if not success:
+                raise typer.Exit(1)
+            print(f"Review posted to {github_repo}#{pr}")
