@@ -13,7 +13,6 @@ from typing import Any, Callable
 from pydantic_ai import Agent, UsageLimits
 from pydantic_ai.settings import ModelSettings
 
-import os
 from .config import AgentConfig
 from .models import ReviewEvent, ReviewResult
 from .code_checks import AVAILABLE_CODE_CHECKS, CodeCheckSpec
@@ -157,6 +156,35 @@ def _format_prior_check_results(results: list[tuple[CodeCheckSpec, ReviewResult]
             )
         )
     return "\n\n".join(blocks)
+
+
+def _log_intermediate_review(check: CodeCheckSpec, review: ReviewResult) -> None:
+    """Log intermediate review summary and inline comments for a check turn."""
+    logging.info(
+        "Intermediate review result [%s]: event=%s, comments=%s",
+        check.check_id,
+        review.event.value,
+        len(review.comments),
+    )
+    logging.info("Intermediate summary [%s]:\n%s", check.check_id, review.summary)
+
+    if not review.comments:
+        logging.info("Intermediate comments [%s]: (none)", check.check_id)
+        return
+
+    for idx, comment in enumerate(review.comments, start=1):
+        line_ref = f"L{comment.line}"
+        if comment.start_line is not None:
+            line_ref = f"L{comment.start_line}-L{comment.line}"
+        logging.info(
+            "Intermediate comment [%s #%s] %s:%s (%s)\n%s",
+            check.check_id,
+            idx,
+            comment.path,
+            line_ref,
+            comment.side.value,
+            comment.body,
+        )
 
 
 def _build_check_turn_prompt(
@@ -417,6 +445,7 @@ async def run_review(
         )
         conversation_messages.extend(turn_result.new_messages())
         check_results.append((check, turn_result.output))
+        _log_intermediate_review(check, turn_result.output)
         logging.info(
             "Check turn complete: %s, event=%s, comments=%s, usage: %s requests, %s tool calls",
             check.check_id,
