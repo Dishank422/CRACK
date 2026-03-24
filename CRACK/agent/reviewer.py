@@ -91,16 +91,15 @@ your last review.
 Guidelines for incremental reviews:
 - Focus your review on the NEW changes (shown in the "Changes since last review"
   section). You do not need to re-review code you already commented on.
-- Do NOT repeat comments you already made in a previous review, unless the issue
-  was not addressed.
-- If a previous comment of yours was addressed by the new changes, do not mention
-  it again.
-- If someone replied to your comment and you agree with their reasoning, do not
-  re-raise the issue.
-- You may raise NEW issues on old code if the new changes reveal a problem you
+- You may raise new issues on OLD changes if the new changes reveal a problem you
   didn't notice before.
-- Your summary should focus on the new changes and whether previous feedback was
-  addressed.
+- However, do NOT repeat comments on OLD changes that you already raised in a
+  previous review, even if the issue was not addressed.
+- If a previous comment of yours was addressed by the new changes you can acknowledge
+  that briefly in the review summary. Do not attempt to respond to the comment or
+  hold a conversation.
+- It a reply was posted to your comment, do not attempt to respond to it or hold
+  a conversation.
 """
 
 
@@ -109,9 +108,7 @@ def _wrap_tool_with_logging(fn: Callable) -> Callable:
 
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
-        args_str = ", ".join(
-            [repr(a) for a in args] + [f"{k}={v!r}" for k, v in kwargs.items()]
-        )
+        args_str = ", ".join([repr(a) for a in args] + [f"{k}={v!r}" for k, v in kwargs.items()])
         logging.info(f"Tool call: {fn.__name__}({args_str})")
         result = fn(*args, **kwargs)
         result_preview = str(result)[:200]
