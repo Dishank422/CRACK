@@ -20,8 +20,7 @@ make black            # black .
 make cs               # flake8 .
 
 # Build
-make pkg              # python multi-build.py
-make windows-build    # pyinstaller CRACK.spec
+make build            # uv build
 ```
 
 Single test: `pytest tests/test_foo.py -k "test_name"`
