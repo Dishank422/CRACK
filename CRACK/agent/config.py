@@ -28,6 +28,9 @@ class AgentConfig:
     # Review behavior
     model_temperature: float = 0.2
 
+    # Which code checks to run (comma-separated list in env var)
+    checks: list[str] = field(default_factory=list)
+
     @classmethod
     def from_env(cls) -> "AgentConfig":
         """Load configuration from environment variables."""
@@ -39,4 +42,5 @@ class AgentConfig:
             max_request_limit=int(os.getenv("CRACK_AGENT_MAX_REQUESTS", "30")),
             max_tool_output_chars=int(os.getenv("CRACK_AGENT_MAX_TOOL_OUTPUT", "10000")),
             model_temperature=float(os.getenv("CRACK_AGENT_TEMPERATURE", "0.2")),
+            checks = os.getenv("CODE_CHECKS", default="").split(",")
         )
