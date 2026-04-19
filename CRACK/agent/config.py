@@ -28,6 +28,9 @@ class AgentConfig:
     # Review behavior
     model_temperature: float = 0.2
 
+    # Which code checks to run (comma-separated list in env var)
+    checks: list[str] = []
+
     @classmethod
     def from_env(cls) -> "AgentConfig":
         """Load configuration from environment variables."""
