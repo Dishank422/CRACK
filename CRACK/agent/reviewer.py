@@ -179,6 +179,43 @@ def build_tool_registry(tool_ctx: ToolContext) -> ToolRegistry:
     return registry
 
 
+def build_system_prompt(pr_context, changed_files, diff_text, is_incremental) -> str:
+    # Build the system prompt (add incremental addendum if applicable)
+    system_prompt = SYSTEM_PROMPT
+    if is_incremental:
+        system_prompt += INCREMENTAL_REVIEW_ADDENDUM
+
+    # Build the system prompt
+    file_list = "\n".join(f"  {f['status']:>10}  {f['path']}" for f in changed_files)
+    prompt_parts = []
+
+    # PR metadata (always include if available)
+    if pr_context:
+        if pr_context.pr_title:
+            prompt_parts.append(f"## PR: {pr_context.pr_title}")
+            if pr_context.pr_author:
+                prompt_parts.append(f"Author: @{pr_context.pr_author}\n")
+        if pr_context.pr_body:
+            prompt_parts.append(f"## PR Description\n{pr_context.pr_body}\n")
+        if pr_context.timeline:
+            prompt_parts.append(f"## PR Timeline\n{pr_context.timeline}\n")
+
+    prompt_parts.append(f"## Changed files\n{file_list}\n")
+    prompt_parts.append(f"## Full PR Diff\n```diff\n{diff_text}\n```")
+
+    # Incremental diff (only for follow-up reviews)
+    if is_incremental and pr_context.incremental_diff:
+        prompt_parts.append(
+            f"\n## Changes since last review\n"
+            f"These are the new changes since your last review. "
+            f"Focus your review on these.\n"
+            f"```diff\n{pr_context.incremental_diff}\n```"
+        )
+
+    system_prompt += "\n\n" + "\n".join(prompt_parts)  # Add PR context to system prompt
+    return system_prompt
+
+
 async def run_review(
     repo_path: str,
     diff_text: str,
@@ -221,19 +258,15 @@ async def run_review(
     registry = build_tool_registry(tool_ctx)
     raw_tools = registry.get_all_tools()
     tools = [_wrap_tool_with_logging(t) for t in raw_tools]
-
+    
     is_incremental = pr_context and pr_context.last_reviewed_commit is not None
-
     logging.info(
         f"Agent review: {len(changed_files)} changed files, "
         f"{len(tools)} tools available, model={config.model}"
         f"{', incremental' if is_incremental else ''}"
     )
 
-    # Build the system prompt (add incremental addendum if applicable)
-    system_prompt = SYSTEM_PROMPT
-    if is_incremental:
-        system_prompt += INCREMENTAL_REVIEW_ADDENDUM
+    system_prompt = build_system_prompt(pr_context, changed_files, diff_text, is_incremental)
 
     # Build the agent
     model = _resolve_model(config)
@@ -245,35 +278,6 @@ async def run_review(
         model_settings=ModelSettings(temperature=config.model_temperature),
     )
     message_history = [] # Save conversation history here
-
-    # Build the initial user prompt
-    file_list = "\n".join(f"  {f['status']:>10}  {f['path']}" for f in changed_files)
-    prompt_parts = []
-
-    # PR metadata (always include if available)
-    if pr_context:
-        if pr_context.pr_title:
-            prompt_parts.append(f"## PR: {pr_context.pr_title}")
-            if pr_context.pr_author:
-                prompt_parts.append(f"Author: @{pr_context.pr_author}\n")
-        if pr_context.pr_body:
-            prompt_parts.append(f"## PR Description\n{pr_context.pr_body}\n")
-        if pr_context.timeline:
-            prompt_parts.append(f"## PR Timeline\n{pr_context.timeline}\n")
-
-    prompt_parts.append(f"## Changed files\n{file_list}\n")
-    prompt_parts.append(f"## Full PR Diff\n```diff\n{diff_text}\n```")
-
-    # Incremental diff (only for follow-up reviews)
-    if is_incremental and pr_context.incremental_diff:
-        prompt_parts.append(
-            f"\n## Changes since last review\n"
-            f"These are the new changes since your last review. "
-            f"Focus your review on these.\n"
-            f"```diff\n{pr_context.incremental_diff}\n```"
-        )
-
-    system_prompt += "\n\n" + "\n".join(prompt_parts)  # Add PR context to system prompt
 
     logging.info("="*60+"\n"+f"Initial system prompt:\n{system_prompt}\n"+"="*60)
     
