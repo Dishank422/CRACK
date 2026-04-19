@@ -13,7 +13,7 @@ from pydantic_ai import Agent, UsageLimits
 from pydantic_ai.settings import ModelSettings
 
 from .config import AgentConfig
-from .models import ReviewResult
+from .models import ReviewResult, ReviewEvent
 from .pr_context import PRContext
 from .tools import ToolRegistry
 from .tools.base import ToolContext
@@ -21,24 +21,14 @@ from .tools.filesystem import FilesystemToolProvider
 from .tools.diff import DiffToolProvider
 from .tools.github import GitHubToolProvider
 from .tools.embeddings import EmbeddingToolProvider
+from .code_checks.prompts import CODE_CHECK_PROMPTS
 
 
 SYSTEM_PROMPT = """\
 You are an expert code reviewer. You are reviewing a pull request (PR) on GitHub.
 
-Your goal is to produce a thorough, actionable code review. Focus on:
-- Bugs and logic errors
-- Security vulnerabilities
-- Performance issues
-- API misuse or incorrect assumptions
-- Missing error handling
-- Breaking changes or backward compatibility issues
-
-Do NOT comment on:
-- Minor style or formatting issues (these are handled by linters)
-- Obvious or trivial things that add no value
-- Positive/praise inline comments (e.g. "good job", "nice pattern") — only flag issues
-- Things that are clearly intentional design decisions without real downsides
+Your goal is to produce a thorough, actionable code review. Focus on the requirements for 
+the code review as requested by the user. Don't raise issues that are not relevant to the user request.
 
 ## Your workflow
 
@@ -257,7 +247,7 @@ async def run_review(
 
     # Build the initial user prompt
     file_list = "\n".join(f"  {f['status']:>10}  {f['path']}" for f in changed_files)
-    prompt_parts = [f"Please review this pull request.\n"]
+    prompt_parts = []
 
     # PR metadata (always include if available)
     if pr_context:
@@ -282,23 +272,44 @@ async def run_review(
             f"```diff\n{pr_context.incremental_diff}\n```"
         )
 
-    user_prompt = "\n".join(prompt_parts)
+    system_prompt += "\n\n" + "\n".join(prompt_parts)  # Add PR context to system prompt
 
-    # Run the agent loop
-    result = await agent.run(
-        user_prompt,
-        usage_limits=UsageLimits(
-            request_limit=config.max_request_limit,
-            tool_calls_limit=config.max_tool_calls,
-        ),
+    review = ReviewResult(
+        summary="",
+        event=ReviewEvent.APPROVE,
+        comments=[],
     )
+    review_requests = 0
+    review_tool_calls = 0
 
-    review = result.output
+    for check in config.checks:
+        if check in CODE_CHECK_PROMPTS:
+            user_prompt = CODE_CHECK_PROMPTS[check]
+            logging.info(f"Adding code check to prompt: {check}")
+            current_review_result = await agent.run(
+                user_prompt,
+                usage_limits=UsageLimits(
+                    request_limit=config.max_request_limit,
+                    tool_calls_limit=config.max_tool_calls,
+                ),
+            )
+            current_output = current_review_result.output
+            review.summary += f"\n\n## {check.capitalize()} Check\n{current_output.summary}"
+
+            if current_output.event in [ReviewEvent.REQUEST_CHANGES, ReviewEvent.COMMENT]:
+                review.event = ReviewEvent.REQUEST_CHANGES
+
+            review.comments.extend(current_output.comments)
+            review_requests += current_review_result.usage().requests
+            review_tool_calls += current_review_result.usage().tool_calls
+        else:
+            logging.warning(f"Unknown code check specified: {check}")
+
     logging.info(
         f"Agent review complete: {len(review.comments)} inline comments, "
         f"event={review.event.value}, "
-        f"usage: {result.usage().requests} requests, "
-        f"{result.usage().tool_calls} tool calls"
+        f"usage: {review_requests} requests, "
+        f"{review_tool_calls} tool calls"
     )
 
     return review

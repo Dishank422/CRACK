@@ -39,4 +39,5 @@ class AgentConfig:
             max_request_limit=int(os.getenv("CRACK_AGENT_MAX_REQUESTS", "30")),
             max_tool_output_chars=int(os.getenv("CRACK_AGENT_MAX_TOOL_OUTPUT", "10000")),
             model_temperature=float(os.getenv("CRACK_AGENT_TEMPERATURE", "0.2")),
+            checks = os.getenv("CODE_CHECKS", default="").split(",")
         )
