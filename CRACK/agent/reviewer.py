@@ -180,12 +180,11 @@ def build_tool_registry(tool_ctx: ToolContext) -> ToolRegistry:
 
 
 def build_system_prompt(pr_context, changed_files, diff_text, is_incremental) -> str:
-    # Build the system prompt (add incremental addendum if applicable)
+    # Build the system prompt
     system_prompt = SYSTEM_PROMPT
     if is_incremental:
         system_prompt += INCREMENTAL_REVIEW_ADDENDUM
 
-    # Build the system prompt
     file_list = "\n".join(f"  {f['status']:>10}  {f['path']}" for f in changed_files)
     prompt_parts = []
 
@@ -278,8 +277,6 @@ async def run_review(
         model_settings=ModelSettings(temperature=config.model_temperature),
     )
     message_history = [] # Save conversation history here
-
-    logging.info("="*60+"\n"+f"Initial system prompt:\n{system_prompt}\n"+"="*60)
     
     review = ReviewResult(
         summary="",
