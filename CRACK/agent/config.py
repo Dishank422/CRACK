@@ -29,7 +29,7 @@ class AgentConfig:
     model_temperature: float = 0.2
 
     # Which code checks to run (comma-separated list in env var)
-    checks: list[str] = []
+    checks: list[str] = field(default_factory=list)
 
     @classmethod
     def from_env(cls) -> "AgentConfig":
