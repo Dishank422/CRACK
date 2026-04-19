@@ -49,7 +49,7 @@ jobs:
         LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
         MODEL: gemini-3-flash-preview
         # Agent config: PydanticAI reads GEMINI_API_KEY for Google models
-        CRACK_AGENT_MODEL: google-gla:gemini-2.5-flash
+        CRACK_AGENT_MODEL: google-gla:gemini-3-flash-preview
         GEMINI_API_KEY: ${{ secrets.LLM_API_KEY }}
         CRACK_DEBUG: "1"
         PR_NUMBER_FROM_WORKFLOW_DISPATCH: ${{ github.event.inputs.pr_number || github.event.pull_request.number }}

@@ -274,6 +274,8 @@ async def run_review(
 
     system_prompt += "\n\n" + "\n".join(prompt_parts)  # Add PR context to system prompt
 
+    logging.info("="*60+"\n"+f"Initial system prompt:\n{system_prompt}\n"+"="*60)
+    
     review = ReviewResult(
         summary="",
         event=ReviewEvent.APPROVE,
