@@ -244,6 +244,7 @@ async def run_review(
         tools=tools,
         model_settings=ModelSettings(temperature=config.model_temperature),
     )
+    message_history = [] # Save conversation history here
 
     # Build the initial user prompt
     file_list = "\n".join(f"  {f['status']:>10}  {f['path']}" for f in changed_files)
@@ -294,7 +295,9 @@ async def run_review(
                     request_limit=config.max_request_limit,
                     tool_calls_limit=config.max_tool_calls,
                 ),
+                message_history=message_history,
             )
+            message_history += current_review_result.new_messages()
             current_output = current_review_result.output
             review.summary += f"\n\n## {check.capitalize()} Check\n{current_output.summary}"
 
