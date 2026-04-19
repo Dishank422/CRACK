@@ -14,6 +14,7 @@ from pydantic_ai.settings import ModelSettings
 
 from .config import AgentConfig
 from .models import ReviewResult
+from .pr_context import PRContext
 from .tools import ToolRegistry
 from .tools.base import ToolContext
 from .tools.filesystem import FilesystemToolProvider
@@ -79,15 +80,35 @@ Your review should contain:
   lines for maximum impact.
 """
 
+INCREMENTAL_REVIEW_ADDENDUM = """\
+
+## Incremental review
+
+You have reviewed this PR before. A timeline of the PR activity (including your
+previous review comments) is provided below. New commits have been pushed since
+your last review.
+
+Guidelines for incremental reviews:
+- Focus your review on the NEW changes (shown in the "Changes since last review"
+  section). You do not need to re-review code you already commented on.
+- You may raise new issues on OLD changes if the new changes reveal a problem you
+  didn't notice before.
+- However, do NOT repeat comments on OLD changes that you already raised in a
+  previous review, even if the issue was not addressed.
+- If a previous comment of yours was addressed by the new changes you can acknowledge
+  that briefly in the review summary. Do not attempt to respond to the comment or
+  hold a conversation.
+- It a reply was posted to your comment, do not attempt to respond to it or hold
+  a conversation.
+"""
+
 
 def _wrap_tool_with_logging(fn: Callable) -> Callable:
     """Wrap a tool function to log its calls and results."""
 
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
-        args_str = ", ".join(
-            [repr(a) for a in args] + [f"{k}={v!r}" for k, v in kwargs.items()]
-        )
+        args_str = ", ".join([repr(a) for a in args] + [f"{k}={v!r}" for k, v in kwargs.items()])
         logging.info(f"Tool call: {fn.__name__}({args_str})")
         result = fn(*args, **kwargs)
         result_preview = str(result)[:200]
@@ -176,6 +197,7 @@ async def run_review(
     github_repo: str | None = None,
     pr_number: int | None = None,
     config: AgentConfig | None = None,
+    pr_context: PRContext | None = None,
 ) -> ReviewResult:
     """
     Run the agent-based code review.
@@ -189,6 +211,7 @@ async def run_review(
         github_repo: GitHub repository in "owner/repo" format (optional).
         pr_number: PR number (optional, for context).
         config: Agent configuration. If None, loaded from environment.
+        pr_context: PR context including timeline and previous review info.
 
     Returns:
         ReviewResult with summary, event, and inline comments.
@@ -209,28 +232,57 @@ async def run_review(
     raw_tools = registry.get_all_tools()
     tools = [_wrap_tool_with_logging(t) for t in raw_tools]
 
+    is_incremental = pr_context and pr_context.last_reviewed_commit is not None
+
     logging.info(
         f"Agent review: {len(changed_files)} changed files, "
         f"{len(tools)} tools available, model={config.model}"
+        f"{', incremental' if is_incremental else ''}"
     )
+
+    # Build the system prompt (add incremental addendum if applicable)
+    system_prompt = SYSTEM_PROMPT
+    if is_incremental:
+        system_prompt += INCREMENTAL_REVIEW_ADDENDUM
 
     # Build the agent
     model = _resolve_model(config)
     agent = Agent(
         model,
         output_type=ReviewResult,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         tools=tools,
         model_settings=ModelSettings(temperature=config.model_temperature),
     )
 
-    # Build the initial user prompt with the diff included
+    # Build the initial user prompt
     file_list = "\n".join(f"  {f['status']:>10}  {f['path']}" for f in changed_files)
-    user_prompt = (
-        f"Please review this pull request.\n\n"
-        f"## Changed files\n{file_list}\n\n"
-        f"## Diff\n```diff\n{diff_text}\n```"
-    )
+    prompt_parts = [f"Please review this pull request.\n"]
+
+    # PR metadata (always include if available)
+    if pr_context:
+        if pr_context.pr_title:
+            prompt_parts.append(f"## PR: {pr_context.pr_title}")
+            if pr_context.pr_author:
+                prompt_parts.append(f"Author: @{pr_context.pr_author}\n")
+        if pr_context.pr_body:
+            prompt_parts.append(f"## PR Description\n{pr_context.pr_body}\n")
+        if pr_context.timeline:
+            prompt_parts.append(f"## PR Timeline\n{pr_context.timeline}\n")
+
+    prompt_parts.append(f"## Changed files\n{file_list}\n")
+    prompt_parts.append(f"## Full PR Diff\n```diff\n{diff_text}\n```")
+
+    # Incremental diff (only for follow-up reviews)
+    if is_incremental and pr_context.incremental_diff:
+        prompt_parts.append(
+            f"\n## Changes since last review\n"
+            f"These are the new changes since your last review. "
+            f"Focus your review on these.\n"
+            f"```diff\n{pr_context.incremental_diff}\n```"
+        )
+
+    user_prompt = "\n".join(prompt_parts)
 
     # Run the agent loop
     result = await agent.run(
