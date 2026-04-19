@@ -63,9 +63,7 @@ def fetch_pr_context(
 
     # Auto-detect agent user from token if not provided
     if not agent_user:
-        user_data = _github_get("https://api.github.com/user", github_token)
-        if user_data:
-            agent_user = user_data.get("login", "")
+        agent_user = "github-actions[bot]"  # Common default for GitHub Actions bots
 
     # Fetch PR metadata
     pr_data = _github_get(f"{base}/pulls/{pr_number}", github_token)
