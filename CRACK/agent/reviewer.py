@@ -263,8 +263,6 @@ async def run_review(
     prompt_parts.append(f"## Changed files\n{file_list}\n")
     prompt_parts.append(f"## Full PR Diff\n```diff\n{diff_text}\n```")
 
-    logging.info("="*60+"\n"+f"Initial system prompt:\n{system_prompt}\n"+"="*60)
-
     # Incremental diff (only for follow-up reviews)
     if is_incremental and pr_context.incremental_diff:
         prompt_parts.append(
@@ -276,6 +274,8 @@ async def run_review(
 
     system_prompt += "\n\n" + "\n".join(prompt_parts)  # Add PR context to system prompt
 
+    logging.info("="*60+"\n"+f"Initial system prompt:\n{system_prompt}\n"+"="*60)
+    
     review = ReviewResult(
         summary="",
         event=ReviewEvent.APPROVE,
