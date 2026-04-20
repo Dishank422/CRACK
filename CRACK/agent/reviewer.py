@@ -64,6 +64,7 @@ Your review should contain:
   use COMMENT for suggestions and observations
 - Use the line numbers from the NEW version of the file (side=RIGHT) unless
   you are specifically commenting on deleted code (side=LEFT)
+- Only comment on code changes in the diff. Do not comment on unchanged code.
 - IMPORTANT: Inline comments can ONLY be placed on lines that appear in the diff
   (within the @@ hunk ranges). Comments on lines outside the diff will be moved
   to the review body instead of appearing inline. Prefer commenting on changed
@@ -286,9 +287,11 @@ async def run_review(
     review_requests = 0
     review_tool_calls = 0
 
-    for check in config.checks:
+    for check_num, check in enumerate(config.checks):
         if check in CODE_CHECK_PROMPTS:
             user_prompt = CODE_CHECK_PROMPTS[check]
+            if check_num > 0:
+                user_prompt += "Please do not repeat previous comments."
             logging.info(f"Adding code check to prompt: {check}")
             current_review_result = await agent.run(
                 user_prompt,

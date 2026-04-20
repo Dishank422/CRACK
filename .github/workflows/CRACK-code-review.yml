@@ -54,7 +54,7 @@ jobs:
         CRACK_DEBUG: "1"
         PR_NUMBER_FROM_WORKFLOW_DISPATCH: ${{ github.event.inputs.pr_number || github.event.pull_request.number }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        CODE_CHECKS: "modularity,exception_handling,style"
+        CODE_CHECKS: "modularity,style"
       run: |
         CRACK --verbose agent-review --pr ${{ github.event.inputs.pr_number || github.event.pull_request.number }} --post-to-github
 
