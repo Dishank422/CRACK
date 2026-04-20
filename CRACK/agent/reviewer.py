@@ -287,9 +287,11 @@ async def run_review(
     review_requests = 0
     review_tool_calls = 0
 
-    for check in config.checks:
+    for check_num, check in enumerate(config.checks):
         if check in CODE_CHECK_PROMPTS:
             user_prompt = CODE_CHECK_PROMPTS[check]
+            if check_num > 0:
+                user_prompt += "Please do not repeat previous comments."
             logging.info(f"Adding code check to prompt: {check}")
             current_review_result = await agent.run(
                 user_prompt,
