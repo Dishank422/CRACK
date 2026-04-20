@@ -64,6 +64,7 @@ Your review should contain:
   use COMMENT for suggestions and observations
 - Use the line numbers from the NEW version of the file (side=RIGHT) unless
   you are specifically commenting on deleted code (side=LEFT)
+- Only comment on code changes in the diff. Do not comment on unchanged code.
 - IMPORTANT: Inline comments can ONLY be placed on lines that appear in the diff
   (within the @@ hunk ranges). Comments on lines outside the diff will be moved
   to the review body instead of appearing inline. Prefer commenting on changed
