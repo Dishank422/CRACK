@@ -340,9 +340,10 @@ def save_round_result(
         result["crack_comments"] = [
             {
                 "path": c.path,
+                "start_line": c.start_line,
                 "line": c.line,
-                "end_line": c.end_line,
                 "side": c.side,
+                "start_side": c.start_side,
                 "body": c.body,
             }
             for c in crack_result.comments
