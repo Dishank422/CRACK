@@ -36,7 +36,7 @@ from CRACK.agent.models import ReviewResult
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 
 # PRs to evaluate
-PR_NUMBERS = [41043, 41024, 40950, 40338, 40412, 40273, 40133, 39986, 40982, 40538, 40531]
+PR_NUMBERS = [41043, 41024, 40950, 40338, 40412, 40273, 40133, 39986, 40982, 40538, 40531, 40845]
 
 REPO_OWNER = "vllm-project"
 REPO_NAME = "vllm"
@@ -191,11 +191,16 @@ def fetch_pr_data(pr_number: int, token: str) -> PRData:
 
 
 def compute_diff(repo: Repo, base_sha: str, head_sha: str) -> tuple[str, list[dict]]:
-    """Compute diff and changed file list between two commits."""
-    diff_text = repo.git.diff(base_sha, head_sha)
+    """Compute diff and changed file list between two commits.
+
+    Uses merge-base to get only the PR's changes, excluding commits
+    that were merged into the base branch after the PR was created.
+    """
+    merge_base = repo.git.merge_base(base_sha, head_sha)
+    diff_text = repo.git.diff(merge_base, head_sha)
 
     # Get changed files
-    name_status = repo.git.diff("--name-status", base_sha, head_sha)
+    name_status = repo.git.diff("--name-status", merge_base, head_sha)
     changed_files = []
     for line in name_status.strip().split("\n"):
         if not line.strip():
@@ -439,6 +444,14 @@ def main():
         if result_path.exists():
             logging.info(f"Results already exist at {result_path}, skipping.")
             prev_checkout_sha = commit_sha
+            continue
+
+        # Check if commit exists locally (force-pushed commits may be orphaned)
+        try:
+            repo.git.cat_file("-t", commit_sha)
+        except Exception:
+            logging.warning(f"Commit {commit_sha[:8]} not found locally (likely force-pushed), skipping.")
+            save_round_result(output_dir, pr_data, round_idx, review_round, None, "orphaned commit")
             continue
 
         # Checkout the commit
