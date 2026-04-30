@@ -220,6 +220,7 @@ def compute_diff(repo: Repo, base_sha: str, head_sha: str) -> tuple[str, list[di
 def build_pr_context_for_round(
     pr_data: PRData,
     round_idx: int,
+    available_commits: set[str] | None = None,
 ) -> PRContext:
     """
     Build PRContext for a given review round.
@@ -259,8 +260,13 @@ def build_pr_context_for_round(
     )
 
     # For rounds after the first, set up incremental review
+    # Only reference previous rounds whose commits are available (not orphaned)
     if round_idx > 0:
-        ctx.last_reviewed_commit = pr_data.review_rounds[round_idx - 1].commit_sha
+        for prev_idx in range(round_idx - 1, -1, -1):
+            prev_sha = pr_data.review_rounds[prev_idx].commit_sha
+            if available_commits is None or prev_sha in available_commits:
+                ctx.last_reviewed_commit = prev_sha
+                break
 
     return ctx
 
@@ -368,6 +374,9 @@ def main():
     os.environ.setdefault("LLM_API_TYPE", "google")
     os.environ.setdefault("LLM_API_KEY", os.environ.get("GEMINI_API_KEY", "dummy"))
     os.environ.setdefault("MODEL", "gemini-3-flash-preview")
+    os.environ.setdefault("CODE_CHECKS", "meta,optimality,modularity,exception_handling,testing,style")
+    os.environ.setdefault("CRACK_AGENT_MAX_TOOL_CALLS", "100")
+    os.environ.setdefault("CRACK_AGENT_MAX_REQUESTS", "120")
 
     repo = Repo(args.repo_path)
     output_dir = Path(args.output_dir)
@@ -479,7 +488,8 @@ def main():
         logging.info(f"Diff: {len(changed_files)} changed files, {len(diff_text)} chars")
 
         # Build PR context
-        pr_context = build_pr_context_for_round(pr_data, round_idx)
+        available_commits = {c["sha"] for c in pr_data.commits}
+        pr_context = build_pr_context_for_round(pr_data, round_idx, available_commits)
 
         # Compute incremental diff if this is a follow-up round
         if pr_context.last_reviewed_commit:
