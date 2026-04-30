@@ -21,7 +21,7 @@ from typing import Callable
 
 from .base import ToolProvider, ToolContext
 
-CACHE_DIR = ".crack-embeddings"
+CACHE_DIR = os.environ.get("CRACK_EMBEDDINGS_DIR", ".crack-embeddings")
 INDEX_FILE = "index.faiss"
 METADATA_FILE = "metadata.json"
 
@@ -157,11 +157,18 @@ def _chunk_file(repo_path: str, rel_path: str) -> list[dict]:
     return result
 
 
+def _get_cache_dir(repo_path: str) -> str:
+    """Get the cache directory path, respecting CRACK_EMBEDDINGS_DIR."""
+    if os.path.isabs(CACHE_DIR):
+        return CACHE_DIR
+    return os.path.join(repo_path, CACHE_DIR)
+
+
 def _load_cache(repo_path: str):
     """Load cached FAISS index and metadata if they exist."""
     import faiss
 
-    cache_dir = os.path.join(repo_path, CACHE_DIR)
+    cache_dir = _get_cache_dir(repo_path)
     index_path = os.path.join(cache_dir, INDEX_FILE)
     meta_path = os.path.join(cache_dir, METADATA_FILE)
 
@@ -186,7 +193,7 @@ def _save_cache(repo_path: str, index, metadata: dict) -> None:
     """Save FAISS index and metadata to cache."""
     import faiss
 
-    cache_dir = os.path.join(repo_path, CACHE_DIR)
+    cache_dir = _get_cache_dir(repo_path)
     os.makedirs(cache_dir, exist_ok=True)
     faiss.write_index(index, os.path.join(cache_dir, INDEX_FILE))
     with open(os.path.join(cache_dir, METADATA_FILE), "w") as f:

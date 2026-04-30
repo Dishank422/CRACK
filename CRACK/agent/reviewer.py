@@ -7,6 +7,7 @@ call tools to explore the codebase, and collects a structured ReviewResult.
 
 import functools
 import logging
+import os
 from typing import Any, Callable
 
 from pydantic_ai import Agent, UsageLimits
@@ -175,7 +176,8 @@ def build_tool_registry(tool_ctx: ToolContext) -> ToolRegistry:
     registry.register(DiffToolProvider)
     if tool_ctx.github_token and tool_ctx.github_repo:
         registry.register(GitHubToolProvider)
-    registry.register(EmbeddingToolProvider)
+    if not os.environ.get("CRACK_SKIP_EMBEDDINGS"):
+        registry.register(EmbeddingToolProvider)
     registry.initialize_all()
     return registry
 
